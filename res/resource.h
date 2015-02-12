@@ -1,0 +1,6 @@
+#pragma once
+
+#define IDR_PROJECT_SCHEMA 12001
+#define IDR_USER_SCHEMA 12002
+
+#define IDT_XML_SCHEMA   1001

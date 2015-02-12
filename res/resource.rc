@@ -1,0 +1,5 @@
+#include "resource.h"
+
+IDR_PROJECT_SCHEMA IDT_XML_SCHEMA "Project.xsd"
+
+IDR_USER_SCHEMA IDT_XML_SCHEMA "UserConfiguation.xsd"

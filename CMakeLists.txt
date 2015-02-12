@@ -7,7 +7,14 @@ ADD_DEFINITIONS(-DSS_CORE)
 INCLUDE_DIRECTORIES($ENV{SS_INCLUDE_PATH})
 
 SET(LOCAL_SOURCES_FILES
-	src/main.c)
+	src/main.cpp
+	src/project.cpp
+	src/launcher.h
+	src/launcher.hpp
+	src/defines.c
+	
+	res/resource.h
+	res/resource.rc)
 
 ADD_EXECUTABLE(SSLauncher
 	${LOCAL_SOURCES_FILES}
@@ -27,3 +34,5 @@ IF(SS_HAVE_OUTPUT_DIRECTORY)
 		PDB_OUTPUT_DIRECTORY $ENV{SS_PDB_PATH}
 		)
 ENDIF(SS_HAVE_OUTPUT_DIRECTORY)
+
+SET_PROPERTY(TARGET SSLauncher PROPERTY FOLDER "Launchers")

@@ -1,8 +1,18 @@
-#include <ssengine/ssengine.h>
-#include <ssengine/log.h>
+#include <ssengine/ssengine.hpp>
+#include <ssengine/log.hpp>
 #include <Windows.h>
 
 #include <assert.h>
+
+#include <ssengine/macros.hpp>
+#include "launcher.hpp"
+
+#include <stdlib.h>
+
+#ifndef NDEBUG
+#include <crtdbg.h>
+#endif
+
 
 static void dbgstr_log(int level, const char* msg, size_t sz, void* userdata){
 	OutputDebugStringA(msg);
@@ -50,9 +60,11 @@ static BOOL create_window()
 		HINSTANCE hInstance;
 
 		wRect.left = 0L;
-		wRect.right = (long)640;
+		ss_macro_eval("WINDOW_WIDTH");
+		wRect.right = (long)ss_macro_get_integer("WINDOW_WIDTH");
 		wRect.top = 0L;
-		wRect.bottom = (long)960;
+		ss_macro_eval("WINDOW_HEIGHT");
+		wRect.bottom = (long)ss_macro_get_integer("WINDOW_HEIGHT");
 
 		hInstance = GetModuleHandle(NULL);
 
@@ -71,10 +83,14 @@ static BOOL create_window()
 		uiWidth = wRect.right - wRect.left;
 		uiHeight = wRect.bottom - wRect.top;
 
+		ss_macro_eval("WINDOW_TITLE");
+		wchar_t* wsTitle = char2wchar_t(ss_macro_get_content("WINDOW_TITLE").c_str());
+
 		hwnd = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE,
-			class_name, L"",
+			class_name, wsTitle,
 			(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) &(~WS_SIZEBOX), 0, 0, uiWidth, uiHeight, NULL, NULL, hInstance, NULL);
 
+		free(wsTitle);
 		ShowWindow(hwnd, SW_SHOW);
 
 		return TRUE;
@@ -121,12 +137,37 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	_In_  HINSTANCE hPrevInstance,
 	_In_  LPSTR lpCmdLine,
 	_In_  int nCmdShow){
+
+#ifndef NDEBUG
+	_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
+#endif
+	::CoInitialize(NULL);
+
 	ss_add_logger(&logger);
+
+	int argc = __argc;
+	char**argv = __argv;
+
+	init_defines();
+
+	//TODO: parse options from command-line arguments
+	if (argc <= 1) {
+		ss_macro_define("PROJECT_FILE", "project.prj");
+	} else {
+		ss_macro_define("PROJECT_FILE", argv[1]);
+	}
+	
+	ss_macro_eval("PROJECT_FILE");
+	load_project(ss_macro_get_content("PROJECT_FILE").c_str());
+	ss_macro_eval("USER_CONFIG_FILE");
+	load_user_configure(ss_macro_get_content("USER_CONFIG_FILE").c_str());
 
 	if (create_window()){
 		main_loop();
 		destroy_window();
 	}
+
+	::CoUninitialize();
 
 	return 0;
 }
