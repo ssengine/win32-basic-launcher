@@ -4,8 +4,6 @@ PROJECT(SSLauncher)
 
 ADD_DEFINITIONS(-DSS_CORE)
 
-INCLUDE_DIRECTORIES($ENV{SS_INCLUDE_PATH})
-
 SET(LOCAL_SOURCES_FILES
 	src/main.cpp
 	src/project.cpp
@@ -14,7 +12,12 @@ SET(LOCAL_SOURCES_FILES
 	src/defines.c
 	
 	res/resource.h
-	res/resource.rc)
+	res/resource.rc
+	res/Project.xsd
+	res/UserConfiguation.xsd)
+
+LINK_LIBRARIES(${SS_LUA_LIBNAME})
+LINK_DIRECTORIES(${LUA_LIB})
 
 ADD_EXECUTABLE(SSLauncher
 	${LOCAL_SOURCES_FILES}
@@ -36,3 +39,6 @@ IF(SS_HAVE_OUTPUT_DIRECTORY)
 ENDIF(SS_HAVE_OUTPUT_DIRECTORY)
 
 SET_PROPERTY(TARGET SSLauncher PROPERTY FOLDER "Launchers")
+
+add_custom_command(TARGET SSLauncher POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${LUA_BIN} "$(TargetDir)" )

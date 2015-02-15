@@ -1,11 +1,11 @@
-#include <ssengine/ssengine.hpp>
-#include <ssengine/log.hpp>
+#include <ssengine/ssengine.h>
+#include <ssengine/log.h>
 #include <Windows.h>
 
 #include <assert.h>
 
-#include <ssengine/macros.hpp>
-#include "launcher.hpp"
+#include <ssengine/macros.h>
+#include "launcher.h"
 
 #include <stdlib.h>
 
@@ -15,8 +15,10 @@
 
 
 static void dbgstr_log(int level, const char* msg, size_t sz, void* userdata){
-	OutputDebugStringA(msg);
-	OutputDebugStringA("\n");
+	wchar_t* wmsg = char2wchar_t(msg);
+	OutputDebugStringW(wmsg);
+	OutputDebugStringW(L"\n");
+	delete[] wmsg;
 }
 
 static void dbgstr_wlog(int level, const wchar_t* msg, size_t sz, void* userdata){
@@ -162,10 +164,18 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	ss_macro_eval("USER_CONFIG_FILE");
 	load_user_configure(ss_macro_get_content("USER_CONFIG_FILE").c_str());
 
+	ss_init_script_context();
+
+	ss_run_script_from_macro("SCRIPTS(onCreate)");
+
 	if (create_window()){
 		main_loop();
 		destroy_window();
 	}
+
+	ss_run_script_from_macro("SCRIPTS(onExit)");
+
+	ss_destroy_script_context();
 
 	::CoUninitialize();
 

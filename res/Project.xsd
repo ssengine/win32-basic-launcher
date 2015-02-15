@@ -9,10 +9,18 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element name="Name" type="xs:string" minOccurs="0"/>
+        <xs:element name="Scripts">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Script" maxOccurs="unbounded" minOccurs="0">
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
         <xs:element name="Emulators">
           <xs:complexType>
             <xs:sequence>
-              <xs:element name="Emulator" maxOccurs="unbounded">
+              <xs:element name="Emulator" maxOccurs="unbounded" minOccurs="0">
               </xs:element>
             </xs:sequence>
           </xs:complexType>
