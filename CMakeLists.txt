@@ -8,7 +8,6 @@ SET(LOCAL_SOURCES_FILES
 	src/main.cpp
 	src/project.cpp
 	src/launcher.h
-	src/launcher.hpp
 	src/defines.c
 	
 	res/resource.h

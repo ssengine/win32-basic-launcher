@@ -7,12 +7,13 @@
 #include <ssengine/macros.h>
 #include "launcher.h"
 
+#include <ssengine/uri.h>
+
 #include <stdlib.h>
 
 #ifndef NDEBUG
 #include <crtdbg.h>
 #endif
-
 
 static void dbgstr_log(int level, const char* msg, size_t sz, void* userdata){
 	wchar_t* wmsg = char2wchar_t(msg);
@@ -163,6 +164,9 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	load_project(ss_macro_get_content("PROJECT_FILE").c_str());
 	ss_macro_eval("USER_CONFIG_FILE");
 	load_user_configure(ss_macro_get_content("USER_CONFIG_FILE").c_str());
+
+	//TODO: group initialize/finalize code to a simple func
+	ss_uri_init_schemas();
 
 	ss_init_script_context();
 
