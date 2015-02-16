@@ -159,6 +159,8 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	} else {
 		ss_macro_define("PROJECT_FILE", argv[1]);
 	}
+
+	ss_uri_init_schemas();
 	
 	ss_macro_eval("PROJECT_FILE");
 	load_project(ss_macro_get_content("PROJECT_FILE").c_str());
@@ -166,8 +168,6 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	load_user_configure(ss_macro_get_content("USER_CONFIG_FILE").c_str());
 
 	//TODO: group initialize/finalize code to a simple func
-	ss_uri_init_schemas();
-
 	ss_init_script_context();
 
 	ss_run_script_from_macro("SCRIPTS(onCreate)");

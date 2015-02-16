@@ -1,6 +1,7 @@
 #include <ssengine/ssengine.h>
 #include <ssengine/log.h>
 #include <ssengine/macros.h>
+#include <ssengine/uri.h>
 #include "launcher.h"
 
 #include <atlcomcli.h>
@@ -80,6 +81,26 @@ void load_xml_text(IXMLDOMNode* root,
 	load_xml_text(node, name);
 }
 
+std::string get_xml_text(IXMLDOMNode* root){
+	CComBSTR str;
+	ASSUME_SUCCESS(root->get_text(&str));
+
+	char* value = wchar_t2char(str);
+	std::string ret = value;
+	free(value);
+	return ret;
+}
+
+std::string get_xml_text(IXMLDOMNode* root, const OLECHAR* path){
+	CComPtr<IXMLDOMNode> node;
+	if (root->selectSingleNode(
+		CComBSTR(path),
+		&node) != S_OK){
+		return std::string();
+	};
+	return get_xml_text(node);
+}
+
 std::string BSTRToString(BSTR bstr){
 	char* tmp = wchar_t2char(bstr);
 	std::string ret = tmp;
@@ -144,6 +165,26 @@ static void script_enum_callback(int id, const std::string& name, IXMLDOMNode* n
 	load_xml_text(node, macroName.c_str());
 }
 
+static void alias_enum_callback(int id, const std::string& schema, IXMLDOMNode* node)
+{
+	std::string spath = get_xml_text(node, L"@path");
+	std::string suri = get_xml_text(node, L"@uri");
+	std::string readOnly = get_xml_text(node, L"@readOnly");
+
+	bool bReadOnly = (readOnly == "1") || (readOnly == "true");
+
+	ss_uri uri;
+
+	if (suri.empty()){
+		uri = ss_uri::from_file(spath.c_str());
+	}
+	else {
+		uri = ss_uri::parse(suri);
+	}
+
+	ss_uri_add_schema_alias(schema.c_str(), uri, bReadOnly);
+}
+
 static void load_configure_fom_project(IXMLDOMDocument2* pXMLDoc)
 {
 	pXMLDoc->setProperty(CComBSTR(L"SelectionLanguage"), CComVariant(L"XPath"));
@@ -152,6 +193,7 @@ static void load_configure_fom_project(IXMLDOMDocument2* pXMLDoc)
 	load_xml_text(pXMLDoc, "PROJECT_NAME", L"/s:Project/s:Name");
 
 	enum_xml_node(pXMLDoc, CComBSTR(L"/s:Project/s:Emulators/s:Emulator"), CComBSTR(L"@name"), emulator_enum_callback);
+	enum_xml_node(pXMLDoc, CComBSTR(L"/s:Project/s:UriAliases/s:Alias"), CComBSTR(L"@schema"), alias_enum_callback);
 	enum_xml_node(pXMLDoc, CComBSTR(L"/s:Project/s:Scripts/s:Script"), CComBSTR(L"@name"), script_enum_callback);
 }
 
