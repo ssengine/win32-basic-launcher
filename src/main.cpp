@@ -170,6 +170,37 @@ static void main_loop()
 	ss_macro_eval("USE_DEBUG_BG");
 	int debugbg = ss_macro_get_integer("USE_DEBUG_BG");
 
+	s_render_device->set_viewport(0, 0, 200, 200);
+
+	ss_vertex_buffer_memory* buffer = s_render_device->create_memory_vertex_bufer(SS_VBF_FLOAT32_RGBA, 3);
+	{
+		float vertexes[] = {
+			0, 1, 0, 0,
+			-1, -1, 0, 0,
+			1, -1, 0, 0,
+		};
+		memcpy(buffer->lock(), vertexes, sizeof(float)*12);
+		buffer->unlock();
+
+		ss_vertex_buffer* tmp = buffer;
+		size_t stride = sizeof(float)* 4;
+		size_t offset = 0;
+		s_render_device->set_vertex_buffer(0, 1, &tmp, &stride, &offset);
+	}
+
+	ss_render_technique* tech = s_render_device->get_predefined_technique(SS_PDT_BLANK);
+
+	ss_render_input_layout* layout;
+	{
+		ss_render_input_element layout_elements[] = {
+			{ SS_USAGE_POSITION, 0, SS_VBF_FLOAT32_RGBA, 0, 0}
+		};
+		layout = tech->create_input_layout(layout_elements, 1);
+		s_render_device->set_input_layout(layout);
+	}
+
+	s_render_device->set_primitive_type(SS_MT_TRIANGLELIST);
+
 	for (;;)
 	{
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -188,9 +219,23 @@ static void main_loop()
 				s_render_device->clear_color(1.f, 0.3f, 0.5f, 0.f);
 				s_render_device->clear();
 			}
+
+			for (size_t i = 0; i < tech->pass_count(); i++){
+				ss_render_pass* pass = tech->get_pass(i);
+				pass->begin();
+				s_render_device->draw(3, 0);
+				pass->end();
+			}
+
 			s_render_device->present();
 		}
 	}
+
+	s_render_device->set_input_layout(nullptr);
+	delete layout;
+
+	s_render_device->unset_vertex_buffer(0, 1);
+	delete buffer;
 }
 
 
