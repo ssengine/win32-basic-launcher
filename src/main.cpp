@@ -170,14 +170,16 @@ static void main_loop()
 	ss_macro_eval("USE_DEBUG_BG");
 	int debugbg = ss_macro_get_integer("USE_DEBUG_BG");
 
-	s_render_device->set_viewport(0, 0, 200, 200);
+	RECT rect;
+	GetClientRect(hwnd, &rect);
+	s_render_device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
 	ss_vertex_buffer_memory* buffer = s_render_device->create_memory_vertex_bufer(SS_VBF_FLOAT32_RGBA, 3);
 	{
 		float vertexes[] = {
-			0, 1, 0, 0,
-			-1, -1, 0, 0,
-			1, -1, 0, 0,
+			0, 1, 0, 1,
+			-1, -1, 0, 1,
+			1, -1, 0, 1,
 		};
 		memcpy(buffer->lock(), vertexes, sizeof(float)*12);
 		buffer->unlock();
