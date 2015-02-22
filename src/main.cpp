@@ -167,6 +167,8 @@ static void destroy_render_device(){
 static void main_loop()
 {
 	MSG msg;
+	ss_macro_eval("USE_DEBUG_BG");
+	int debugbg = ss_macro_get_integer("USE_DEBUG_BG");
 
 	for (;;)
 	{
@@ -182,8 +184,10 @@ static void main_loop()
 		else {
 			//TODO: if paused, ignore enterframe and use GetMessage for less cpu usage.
 			//seed_app_enterFrame(tick_count());
-			s_render_device->clear_color((rand() % 255) / 255.0f, (rand() % 255) / 255.0f, (rand() % 255) / 255.0f, (rand() % 255) / 255.0f);
-			s_render_device->clear();
+			if (debugbg){
+				s_render_device->clear_color(1.f, 0.3f, 0.5f, 0.f);
+				s_render_device->clear();
+			}
 			s_render_device->present();
 		}
 	}

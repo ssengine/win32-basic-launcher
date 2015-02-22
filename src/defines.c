@@ -14,6 +14,8 @@ void init_defines(){
 	ss_macro_define("WINDOW_WIDTH", "{EMULATORS({EMULATOR})(width)}");
 	ss_macro_define("WINDOW_HEIGHT", "{EMULATORS({EMULATOR})(height)}");
 
+	ss_macro_define("USE_DEBUG_BG", "1");
+
 	//ss_macro_define("RENDERER_LIB", "SSGLRenderer.dll");
 	//ss_macro_define("RENDERER_TYPE", "32");
 
