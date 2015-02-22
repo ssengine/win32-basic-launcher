@@ -14,6 +14,11 @@ void init_defines(){
 	ss_macro_define("WINDOW_WIDTH", "{EMULATORS({EMULATOR})(width)}");
 	ss_macro_define("WINDOW_HEIGHT", "{EMULATORS({EMULATOR})(height)}");
 
+	//ss_macro_define("RENDERER_LIB", "SSGLRenderer.dll");
+	//ss_macro_define("RENDERER_TYPE", "32");
+
+	ss_macro_define("RENDERER_LIBS(0)", "SSGLRenderer.dll");
+	ss_macro_define("RENDERER_TYPES(0)", "16");
 
 	char Buf[257];
 	DWORD sz = 257;

@@ -8,6 +8,7 @@
 #include "launcher.h"
 
 #include <ssengine/uri.h>
+#include <ssengine/render/device.h>
 
 #include <stdlib.h>
 
@@ -98,7 +99,7 @@ static BOOL create_window()
 
 		return TRUE;
 	}
-	return FALSE;
+	return false;
 }
 
 static void destroy_window()
@@ -110,6 +111,57 @@ static void destroy_window()
 		hwnd = NULL;
 		UnregisterClassW(L"SSENGINE", GetModuleHandle(NULL));
 	}
+}
+
+static ss_render_device* s_render_device;
+
+static bool create_render_device_from(const char* libmname, const char* dtmname){
+	ss_macro_eval(libmname);
+	ss_macro_eval(dtmname);
+	HMODULE hmod = LoadLibrary(ss_macro_get_content(libmname).c_str());
+	if (hmod){
+		ss_device_factory_type fac = (ss_device_factory_type)GetProcAddress(hmod, "ss_device_factory");
+		if (fac){
+			ss_device_type dt = (ss_device_type)ss_macro_get_integer(dtmname);
+			s_render_device = fac(dt, (uintptr_t)(hwnd));
+			if (s_render_device){
+				return true;
+			}
+			FreeLibrary(hmod);
+		}
+	}
+
+	SS_LOGE("Create render device %s(%d) create failed, try others", ss_macro_get_content(libmname).c_str(), ss_macro_get_integer(dtmname));
+	return false;
+}
+
+static bool create_render_device(){
+	//TODO: load device type from project configure.
+	if (ss_macro_isdef("RENDERER_LIB")){
+		if (create_render_device_from("RENDERER_LIB", "RENDERER_TYPE")){
+			return true;
+		}
+		SS_LOGE("Default render device create failed, try others");
+	}
+	// try every renderer.
+	for (int i = 0; i < 0x100; i++){
+		char libname[32], dtname[32];
+		sprintf(libname, "RENDERER_LIBS(%d)", i);
+		sprintf(dtname, "RENDERER_TYPES(%d)", i);
+		if (!ss_macro_isdef(libname) || !ss_macro_isdef(dtname)){
+			break;
+		}
+		if (create_render_device_from(libname, dtname)){
+			return true;
+		}
+	}
+	SS_LOGE("No render device available.");
+	return false;
+}
+
+static void destroy_render_device(){
+	s_render_device->destroy();
+	s_render_device = NULL;
 }
 
 static void main_loop()
@@ -130,7 +182,9 @@ static void main_loop()
 		else {
 			//TODO: if paused, ignore enterframe and use GetMessage for less cpu usage.
 			//seed_app_enterFrame(tick_count());
-			//device->swap_buffer();
+			s_render_device->clear_color((rand() % 255) / 255.0f, (rand() % 255) / 255.0f, (rand() % 255) / 255.0f, (rand() % 255) / 255.0f);
+			s_render_device->clear();
+			s_render_device->present();
 		}
 	}
 }
@@ -173,7 +227,11 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	ss_run_script_from_macro("SCRIPTS(onCreate)");
 
 	if (create_window()){
-		main_loop();
+		if (create_render_device()){
+			main_loop();
+			destroy_render_device();
+		}
+
 		destroy_window();
 	}
 
