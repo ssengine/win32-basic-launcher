@@ -174,30 +174,33 @@ static void main_loop()
 	GetClientRect(hwnd, &rect);
 	s_render_device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-	ss_vertex_buffer_memory* buffer = s_render_device->create_memory_vertex_bufer(SS_FORMAT_FLOAT32_RGBA, 3);
+	ss_vertex_buffer_memory* buffer;
 	{
 		float vertexes[] = {
-			0, 1, 0, 1,
-			-1, -1, 0, 1,
-			1, -1, 0, 1,
+			0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 
+			-1, -1, 0, 1, 0, 1, 0, 1, 0, 1,
+			1, -1, 0, 1, 0, 0, 1, 1, 1, 0
 		};
+		buffer = s_render_device->create_memory_vertex_bufer(sizeof(vertexes));
 		memcpy(buffer->lock(), vertexes, sizeof(vertexes));
 		buffer->unlock();
 
 		ss_vertex_buffer* tmp = buffer;
-		size_t stride = sizeof(float)* 4;
+		size_t stride = sizeof(float)*10;
 		size_t offset = 0;
 		s_render_device->set_vertex_buffer(0, 1, &tmp, &stride, &offset);
 	}
 
-	ss_render_technique* tech = s_render_device->get_predefined_technique(SS_PDT_BLANK);
+	ss_render_technique* tech = s_render_device->get_predefined_technique(SS_PDT_STANDARD);
 
 	ss_render_input_layout* layout;
 	{
 		ss_render_input_element layout_elements[] = {
-			{ SS_USAGE_POSITION, 0, SS_FORMAT_FLOAT32_RGBA, 0, 0}
+			{ SS_USAGE_POSITION, 0, SS_FORMAT_FLOAT32_RGBA, 0, 0},
+			{ SS_USAGE_DIFFUSE, 0, SS_FORMAT_FLOAT32_RGBA, 0, 16 },
+			{ SS_USAGE_TEXCOORD, 0, SS_FORMAT_FLOAT32_RG, 0, 32 }
 		};
-		layout = tech->create_input_layout(layout_elements, 1);
+		layout = tech->create_input_layout(layout_elements, 3);
 		s_render_device->set_input_layout(layout);
 	}
 
@@ -212,6 +215,21 @@ static void main_loop()
 		cb->unlock();
 		ss_constant_buffer* tmp = cb;
 		s_render_device->set_ps_constant_buffer(0, 1, &tmp);
+	}
+
+	ss_texture2d* texture;
+	{
+		//Create a 64x64 texture.
+		unsigned char pixels[64 * 64 * 4];
+		for (size_t i = 0; i < 64 * 64; i++){
+			pixels[i * 4] = rand() & 0xff;
+			pixels[i * 4 + 1] = rand() & 0xff;
+			pixels[i * 4 + 2] = rand() & 0xff;
+			pixels[i * 4 + 3] = 0xff;
+		}
+		texture = s_render_device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
+
+		s_render_device->set_ps_texture2d_resource(0, 1, &texture);
 	}
 
 	for (;;)
@@ -243,6 +261,8 @@ static void main_loop()
 			s_render_device->present();
 		}
 	}
+
+	delete texture;
 
 	s_render_device->set_input_layout(nullptr);
 	delete layout;
