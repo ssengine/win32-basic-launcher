@@ -174,14 +174,14 @@ static void main_loop()
 	GetClientRect(hwnd, &rect);
 	s_render_device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-	ss_vertex_buffer_memory* buffer = s_render_device->create_memory_vertex_bufer(SS_VBF_FLOAT32_RGBA, 3);
+	ss_vertex_buffer_memory* buffer = s_render_device->create_memory_vertex_bufer(SS_FORMAT_FLOAT32_RGBA, 3);
 	{
 		float vertexes[] = {
 			0, 1, 0, 1,
 			-1, -1, 0, 1,
 			1, -1, 0, 1,
 		};
-		memcpy(buffer->lock(), vertexes, sizeof(float)*12);
+		memcpy(buffer->lock(), vertexes, sizeof(vertexes));
 		buffer->unlock();
 
 		ss_vertex_buffer* tmp = buffer;
@@ -195,13 +195,24 @@ static void main_loop()
 	ss_render_input_layout* layout;
 	{
 		ss_render_input_element layout_elements[] = {
-			{ SS_USAGE_POSITION, 0, SS_VBF_FLOAT32_RGBA, 0, 0}
+			{ SS_USAGE_POSITION, 0, SS_FORMAT_FLOAT32_RGBA, 0, 0}
 		};
 		layout = tech->create_input_layout(layout_elements, 1);
 		s_render_device->set_input_layout(layout);
 	}
 
 	s_render_device->set_primitive_type(SS_MT_TRIANGLELIST);
+
+	ss_constant_buffer_memory* cb = s_render_device->create_memory_constant_buffer(SS_FORMAT_FLOAT32_RGBA, 1);
+	{
+		float color[] = {
+			0, 0, 1, 1
+		};
+		memcpy(cb->lock(), color, sizeof(color));
+		cb->unlock();
+		ss_constant_buffer* tmp = cb;
+		s_render_device->set_ps_constant_buffer(0, 1, &tmp);
+	}
 
 	for (;;)
 	{
@@ -238,6 +249,9 @@ static void main_loop()
 
 	s_render_device->unset_vertex_buffer(0, 1);
 	delete buffer;
+
+	s_render_device->unset_ps_constant_buffer(0, 1);
+	delete cb;
 }
 
 
