@@ -9,6 +9,7 @@
 
 #include <ssengine/uri.h>
 #include <ssengine/render/device.h>
+#include <ssengine/render/drawbatch.h>
 
 #include <stdlib.h>
 
@@ -179,50 +180,6 @@ static void main_loop(ss_core_context* C)
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-	ss_buffer_memory* buffer;
-	{
-		float vertexes[] = {
-			0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 
-			-1, -1, 0, 1, 0, 1, 0, 1, 0, 1,
-			1, -1, 0, 1, 0, 0, 1, 1, 1, 0
-		};
-		buffer = device->create_memory_buffer(sizeof(vertexes));
-		memcpy(buffer->lock(), vertexes, sizeof(vertexes));
-		buffer->unlock();
-
-		ss_buffer* tmp = buffer;
-		size_t stride = sizeof(float)*10;
-		size_t offset = 0;
-		device->set_vertex_buffer(0, 1, &tmp, &stride, &offset);
-	}
-
-	ss_render_technique* tech = device->get_predefined_technique(SS_PDT_STANDARD);
-
-	ss_render_input_layout* layout;
-	{
-		ss_render_input_element layout_elements[] = {
-			{ SS_USAGE_POSITION, 0, SS_FORMAT_FLOAT32_RGBA, 0, 0},
-			{ SS_USAGE_DIFFUSE, 0, SS_FORMAT_FLOAT32_RGBA, 0, 16 },
-			{ SS_USAGE_TEXCOORD, 0, SS_FORMAT_FLOAT32_RG, 0, 32 }
-		};
-		layout = tech->create_input_layout(layout_elements, 3);
-		device->set_input_layout(layout);
-	}
-
-	device->set_primitive_type(SS_MT_TRIANGLELIST);
-
-	ss_buffer_memory* cb;
-	{
-		float color[] = {
-			0, 0, 1, 1
-		};
-		cb = device->create_memory_buffer(sizeof(color));
-		memcpy(cb->lock(), color, sizeof(color));
-		cb->unlock();
-		ss_buffer* tmp = cb;
-		device->set_ps_constant_buffer(0, 1, &tmp);
-	}
-
 	ss_texture2d* texture;
 	{
 		//Create a 64x64 texture.
@@ -235,7 +192,7 @@ static void main_loop(ss_core_context* C)
 		}
 		texture = device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
 
-		device->set_ps_texture2d_resource(0, 1, &texture);
+		//device->set_ps_texture2d_resource(0, 1, &texture);
 	}
 
 	for (;;)
@@ -257,27 +214,13 @@ static void main_loop(ss_core_context* C)
 				device->clear();
 			}
 
-			for (size_t i = 0; i < tech->pass_count(); i++){
-				ss_render_pass* pass = tech->get_pass(i);
-				pass->begin();
-				device->draw(3, 0);
-				pass->end();
-			}
-
+			ss_db_draw_line(C, -0.5, -0.5, 0.5, 0.5);
+			ss_db_flush(C);
 			device->present();
 		}
 	}
 
 	delete texture;
-
-	device->set_input_layout(nullptr);
-	delete layout;
-
-	device->unset_vertex_buffer(0, 1);
-	delete buffer;
-
-	device->unset_ps_constant_buffer(0, 1);
-	delete cb;
 }
 
 
