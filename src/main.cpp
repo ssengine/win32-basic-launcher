@@ -214,7 +214,16 @@ static void main_loop(ss_core_context* C)
 				device->clear();
 			}
 
-			ss_db_draw_line(C, -0.5, -0.5, 0.5, 0.5);
+			ss_db_draw_image_rect(C,
+				texture, 
+				-1, -1, 2, 2,
+				0, 0, 1, 1
+				);
+			for (size_t i = 0; i < 100; i++){
+				ss_db_draw_line(C, 
+					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
+					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
+			}
 			ss_db_flush(C);
 			device->present();
 		}
