@@ -121,9 +121,9 @@ static bool create_render_device_from(ss_core_context* C, const char* libmname, 
 	ss_macro_eval(C, dtmname);
 	HMODULE hmod = LoadLibrary(ss_macro_get_content(C, libmname).c_str());
 	if (hmod){
-		ss_device_factory_type fac = (ss_device_factory_type)GetProcAddress(hmod, "ss_device_factory");
+		ss_render_device_factory_type fac = (ss_render_device_factory_type)GetProcAddress(hmod, "ss_render_device_factory");
 		if (fac){
-			ss_device_type dt = (ss_device_type)ss_macro_get_integer(C, dtmname);
+			ss_render_device_type dt = (ss_render_device_type)ss_macro_get_integer(C, dtmname);
 			ss_render_device* device = fac(dt, (uintptr_t)(hwnd));
 			if (device){
 				ss_set_render_device(C, device);
