@@ -9,6 +9,7 @@
 
 #include <ssengine/uri.h>
 #include <ssengine/render/device.h>
+#include <ssengine/render/drawbatch.h>
 
 #include <stdlib.h>
 
@@ -113,7 +114,7 @@ static void destroy_window(ss_core_context* C)
 	}
 }
 
-static ss_render_device* s_render_device;
+//static ss_render_device* s_render_device;
 
 static bool create_render_device_from(ss_core_context* C, const char* libmname, const char* dtmname){
 	ss_macro_eval(C, libmname);
@@ -123,8 +124,9 @@ static bool create_render_device_from(ss_core_context* C, const char* libmname, 
 		ss_device_factory_type fac = (ss_device_factory_type)GetProcAddress(hmod, "ss_device_factory");
 		if (fac){
 			ss_device_type dt = (ss_device_type)ss_macro_get_integer(C, dtmname);
-			s_render_device = fac(dt, (uintptr_t)(hwnd));
-			if (s_render_device){
+			ss_render_device* device = fac(dt, (uintptr_t)(hwnd));
+			if (device){
+				ss_set_render_device(C, device);
 				return true;
 			}
 			FreeLibrary(hmod);
@@ -159,9 +161,11 @@ static bool create_render_device(ss_core_context* C){
 	return false;
 }
 
-static void destroy_render_device(){
-	s_render_device->destroy();
-	s_render_device = NULL;
+static void destroy_render_device(ss_core_context* C){
+	ss_render_device* device = ss_get_render_device(C);
+	ss_set_render_device(C, NULL);
+	device->destroy();
+	device = NULL;
 }
 
 static void main_loop(ss_core_context* C)
@@ -170,53 +174,11 @@ static void main_loop(ss_core_context* C)
 	ss_macro_eval(C, "USE_DEBUG_BG");
 	int debugbg = ss_macro_get_integer(C, "USE_DEBUG_BG");
 
+	ss_render_device* device = ss_get_render_device(C);
+
 	RECT rect;
 	GetClientRect(hwnd, &rect);
-	s_render_device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
-
-	ss_buffer_memory* buffer;
-	{
-		float vertexes[] = {
-			0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 
-			-1, -1, 0, 1, 0, 1, 0, 1, 0, 1,
-			1, -1, 0, 1, 0, 0, 1, 1, 1, 0
-		};
-		buffer = s_render_device->create_memory_buffer(sizeof(vertexes));
-		memcpy(buffer->lock(), vertexes, sizeof(vertexes));
-		buffer->unlock();
-
-		ss_buffer* tmp = buffer;
-		size_t stride = sizeof(float)*10;
-		size_t offset = 0;
-		s_render_device->set_vertex_buffer(0, 1, &tmp, &stride, &offset);
-	}
-
-	ss_render_technique* tech = s_render_device->get_predefined_technique(SS_PDT_STANDARD);
-
-	ss_render_input_layout* layout;
-	{
-		ss_render_input_element layout_elements[] = {
-			{ SS_USAGE_POSITION, 0, SS_FORMAT_FLOAT32_RGBA, 0, 0},
-			{ SS_USAGE_DIFFUSE, 0, SS_FORMAT_FLOAT32_RGBA, 0, 16 },
-			{ SS_USAGE_TEXCOORD, 0, SS_FORMAT_FLOAT32_RG, 0, 32 }
-		};
-		layout = tech->create_input_layout(layout_elements, 3);
-		s_render_device->set_input_layout(layout);
-	}
-
-	s_render_device->set_primitive_type(SS_MT_TRIANGLELIST);
-
-	ss_buffer_memory* cb;
-	{
-		float color[] = {
-			0, 0, 1, 1
-		};
-		cb = s_render_device->create_memory_buffer(sizeof(color));
-		memcpy(cb->lock(), color, sizeof(color));
-		cb->unlock();
-		ss_buffer* tmp = cb;
-		s_render_device->set_ps_constant_buffer(0, 1, &tmp);
-	}
+	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
 	ss_texture2d* texture;
 	{
@@ -228,9 +190,9 @@ static void main_loop(ss_core_context* C)
 			pixels[i * 4 + 2] = rand() & 0xff;
 			pixels[i * 4 + 3] = 0xff;
 		}
-		texture = s_render_device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
+		texture = device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
 
-		s_render_device->set_ps_texture2d_resource(0, 1, &texture);
+		//device->set_ps_texture2d_resource(0, 1, &texture);
 	}
 
 	for (;;)
@@ -248,31 +210,26 @@ static void main_loop(ss_core_context* C)
 			//TODO: if paused, ignore enterframe and use GetMessage for less cpu usage.
 			//seed_app_enterFrame(tick_count());
 			if (debugbg){
-				s_render_device->clear_color(1.f, 0.3f, 0.5f, 0.f);
-				s_render_device->clear();
+				device->clear_color(1.f, 0.3f, 0.5f, 0.f);
+				device->clear();
 			}
 
-			for (size_t i = 0; i < tech->pass_count(); i++){
-				ss_render_pass* pass = tech->get_pass(i);
-				pass->begin();
-				s_render_device->draw(3, 0);
-				pass->end();
+			ss_db_draw_image_rect(C,
+				texture, 
+				-1, -1, 2, 2,
+				0, 0, 1, 1
+				);
+			for (size_t i = 0; i < 100; i++){
+				ss_db_draw_line(C, 
+					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
+					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
 			}
-
-			s_render_device->present();
+			ss_db_flush(C);
+			device->present();
 		}
 	}
 
 	delete texture;
-
-	s_render_device->set_input_layout(nullptr);
-	delete layout;
-
-	s_render_device->unset_vertex_buffer(0, 1);
-	delete buffer;
-
-	s_render_device->unset_ps_constant_buffer(0, 1);
-	delete cb;
 }
 
 
@@ -314,7 +271,7 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 	if (create_window(C)){
 		if (create_render_device(C)){
 			main_loop(C);
-			destroy_render_device();
+			destroy_render_device(C);
 		}
 
 		destroy_window(C);
