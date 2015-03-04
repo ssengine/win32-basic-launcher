@@ -214,6 +214,11 @@ static void main_loop(ss_core_context* C)
 				device->clear();
 			}
 
+			lua_State *L = ss_get_script_context(C);
+			static int tagOnFrame = 0;
+			ss_cache_script_from_macro(L, "onFrame", &tagOnFrame);
+			ss_lua_safe_call(L, 0, 0);
+
 			ss_db_draw_image_rect(C,
 				texture, 
 				-1, -1, 2, 2,
