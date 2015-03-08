@@ -180,21 +180,6 @@ static void main_loop(ss_core_context* C)
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-	ss_texture2d* texture;
-	{
-		//Create a 64x64 texture.
-		unsigned char pixels[64 * 64 * 4];
-		for (size_t i = 0; i < 64 * 64; i++){
-			pixels[i * 4] = rand() & 0xff;
-			pixels[i * 4 + 1] = rand() & 0xff;
-			pixels[i * 4 + 2] = rand() & 0xff;
-			pixels[i * 4 + 3] = 0xff;
-		}
-		texture = device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
-
-		//device->set_ps_texture2d_resource(0, 1, &texture);
-	}
-
 	for (;;)
 	{
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -216,25 +201,12 @@ static void main_loop(ss_core_context* C)
 
 			lua_State *L = ss_get_script_context(C);
 			static int tagOnFrame = 0;
-			ss_cache_script_from_macro(L, "onFrame", &tagOnFrame);
+			ss_cache_script_from_macro(L, "SCRIPTS(onFrame)", &tagOnFrame);
 			ss_lua_safe_call(L, 0, 0);
 
-			ss_db_draw_image_rect(C,
-				texture, 
-				-1, -1, 2, 2,
-				0, 0, 1, 1
-				);
-			for (size_t i = 0; i < 100; i++){
-				ss_db_draw_line(C, 
-					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
-					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
-			}
-			ss_db_flush(C);
 			device->present();
 		}
 	}
-
-	delete texture;
 }
 
 
@@ -271,16 +243,22 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 
 	//TODO: group initialize/finalize code to a simple func
 
+	
+	if (!create_window(C)){
+		SS_WLOGE(L"create window failed.");
+		return 0;
+	}
+
+	if (!create_render_device(C)){
+		SS_WLOGE(L"create render device failed.");
+		return 0;
+	}
+
 	ss_run_script_from_macro(C, "SCRIPTS(onCreate)");
 
-	if (create_window(C)){
-		if (create_render_device(C)){
-			main_loop(C);
-			destroy_render_device(C);
-		}
-
-		destroy_window(C);
-	}
+	main_loop(C);
+	destroy_render_device(C);
+	destroy_window(C);
 
 	ss_run_script_from_macro(C, "SCRIPTS(onExit)");
 
