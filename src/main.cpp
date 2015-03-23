@@ -216,7 +216,7 @@ static void main_loop(ss_core_context* C)
 
 			lua_State *L = ss_get_script_context(C);
 			static int tagOnFrame = 0;
-			ss_cache_script_from_macro(L, "onFrame", &tagOnFrame);
+			ss_cache_script_from_macro(L, "SCRIPTS(onFrame)", &tagOnFrame);
 			ss_lua_safe_call(L, 0, 0);
 
 			ss_db_draw_image_rect(C,
@@ -275,7 +275,9 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 
 	if (create_window(C)){
 		if (create_render_device(C)){
+            ss_run_script_from_macro(C, "SCRIPTS(onStart)");
 			main_loop(C);
+            ss_run_script_from_macro(C, "SCRIPTS(onStop)");
 			destroy_render_device(C);
 		}
 
