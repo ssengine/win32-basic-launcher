@@ -8,6 +8,7 @@
 #include "launcher.h"
 
 #include <ssengine/uri.h>
+#include <ssengine/render/resources.h>
 #include <ssengine/render/device.h>
 #include <ssengine/render/drawbatch.h>
 
@@ -180,20 +181,10 @@ static void main_loop(ss_core_context* C)
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-	ss_texture2d* texture;
-	{
-		//Create a 64x64 texture.
-		unsigned char pixels[64 * 64 * 4];
-		for (size_t i = 0; i < 64 * 64; i++){
-			pixels[i * 4] = rand() & 0xff;
-			pixels[i * 4 + 1] = rand() & 0xff;
-			pixels[i * 4 + 2] = rand() & 0xff;
-			pixels[i * 4 + 3] = 0xff;
-		}
-		texture = device->create_texture2d(64, 64, SS_FORMAT_BYTE_RGBA, pixels);
+    ss_texture2d_resource_ref* texture_res = ss_texture2d_resource(C, "res:///qrcode.png");
 
-		//device->set_ps_texture2d_resource(0, 1, &texture);
-	}
+    ss_resource_load(C, texture_res->unwrap());
+	ss_texture2d* texture = texture_res->get();
 
 	for (;;)
 	{
@@ -234,7 +225,7 @@ static void main_loop(ss_core_context* C)
 		}
 	}
 
-	delete texture;
+    ss_resource_release(C, texture_res->unwrap());
 }
 
 
@@ -246,9 +237,9 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 #ifndef NDEBUG
 	_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
 #endif
-	ss_core_context* C = ss_create_context();
-
-	::CoInitialize(NULL);
+    ::CoInitialize(NULL);
+    
+    ss_core_context* C = ss_create_context();
 
 	ss_add_logger(&logger);
 
