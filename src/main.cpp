@@ -169,8 +169,66 @@ static void destroy_render_device(ss_core_context* C){
 	device = NULL;
 }
 
+struct clock{
+public:
+    virtual ~clock(){};
+    virtual double get_dt() = 0;
+    virtual bool is_valid() = 0;
+};
+
+struct hr_clock : clock{
+    hr_clock(){
+        LARGE_INTEGER freq;
+        valid = QueryPerformanceFrequency(&freq) && QueryPerformanceCounter(&stamp);
+        frequency = (double)freq.QuadPart;
+    }
+    virtual ~hr_clock(){
+
+    }
+    virtual double get_dt(){
+        LARGE_INTEGER newT;
+        QueryPerformanceCounter(&newT);
+
+        double ret = (newT.QuadPart - stamp.QuadPart) / frequency;
+        stamp = newT;
+        return ret;
+    }
+    virtual bool is_valid(){
+        return valid;
+    }
+private:
+    bool valid;
+    double frequency;
+    LARGE_INTEGER stamp;
+};
+
+struct lr_clock : clock{
+    lr_clock(){
+        stamp = GetTickCount();
+    }
+    virtual ~lr_clock(){
+
+    }
+    virtual double get_dt(){
+        DWORD newT = GetTickCount();
+        double ret = (newT - stamp) / 1000.0;
+        stamp = newT;
+        return ret;
+    }
+    virtual bool is_valid(){
+        return true;
+    }
+    DWORD stamp;
+};
+
+
 static void main_loop(ss_core_context* C)
 {
+    clock* t = new hr_clock();
+    if (!t->is_valid()){
+        delete t;
+        t = new lr_clock();
+    }
 	MSG msg;
 	ss_macro_eval(C, "USE_DEBUG_BG");
 	int debugbg = ss_macro_get_integer(C, "USE_DEBUG_BG");
@@ -208,7 +266,8 @@ static void main_loop(ss_core_context* C)
 			lua_State *L = ss_get_script_context(C);
 			static int tagOnFrame = 0;
 			ss_cache_script_from_macro(L, "SCRIPTS(onFrame)", &tagOnFrame);
-			ss_lua_safe_call(L, 0, 0);
+            lua_pushnumber(L, t->get_dt());
+			ss_lua_safe_call(L, 1, 0);
 
 			ss_db_draw_image_rect(C,
 				texture, 
@@ -226,6 +285,8 @@ static void main_loop(ss_core_context* C)
 	}
 
     ss_resource_release(C, texture_res->unwrap());
+
+    delete t;
 }
 
 
