@@ -181,7 +181,7 @@ static void main_loop(ss_core_context* C)
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-    ss_texture2d_resource_ref* texture_res = ss_texture2d_resource(C, "res:///qrcode.png");
+    ss_texture2d_resource_ref* texture_res = ss_texture2d_resource_ref::get(C, "res:///qrcode.png");
 
     ss_resource_load(C, texture_res->unwrap());
 	ss_texture2d* texture = texture_res->get();
