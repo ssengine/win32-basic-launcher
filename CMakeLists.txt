@@ -38,6 +38,3 @@ IF(SS_HAVE_OUTPUT_DIRECTORY)
 ENDIF(SS_HAVE_OUTPUT_DIRECTORY)
 
 SET_PROPERTY(TARGET SSLauncher PROPERTY FOLDER "Launchers")
-
-add_custom_command(TARGET SSLauncher POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${LUA_BIN} "$(TargetDir)" )
