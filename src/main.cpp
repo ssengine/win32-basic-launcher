@@ -239,11 +239,6 @@ static void main_loop(ss_core_context* C)
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
 
-    ss_texture2d_resource_ref* texture_res = ss_texture2d_resource_ref::get(C, "res:///qrcode.png");
-
-    ss_resource_load(C, texture_res->unwrap());
-	ss_texture2d* texture = texture_res->get();
-
 	for (;;)
 	{
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -269,22 +264,10 @@ static void main_loop(ss_core_context* C)
             lua_pushnumber(L, t->get_dt());
 			ss_lua_safe_call(L, 1, 0);
 
-			ss_db_draw_image_rect(C,
-				texture, 
-				-1, -1, 2, 2,
-				0, 0, 1, 1
-				);
-			for (size_t i = 0; i < 100; i++){
-				ss_db_draw_line(C, 
-					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
-					rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
-			}
 			ss_db_flush(C);
 			device->present();
 		}
 	}
-
-    ss_resource_release(C, texture_res->unwrap());
 
     delete t;
 }
