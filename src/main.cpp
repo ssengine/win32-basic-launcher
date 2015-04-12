@@ -94,7 +94,7 @@ static BOOL create_window(ss_core_context* C)
 
 		hwnd = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE,
 			class_name, wsTitle,
-			(WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) &(~WS_SIZEBOX), 0, 0, uiWidth, uiHeight, NULL, NULL, hInstance, NULL);
+            (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) &(~WS_SIZEBOX) &(~WS_MAXIMIZEBOX), 0, 0, uiWidth, uiHeight, NULL, NULL, hInstance, NULL);
 
 		free(wsTitle);
 		ShowWindow(hwnd, SW_SHOW);
@@ -229,6 +229,8 @@ static void main_loop(ss_core_context* C)
         delete t;
         t = new lr_clock();
     }
+    lua_State *L = ss_get_script_context(C);
+
 	MSG msg;
 	ss_macro_eval(C, "USE_DEBUG_BG");
 	int debugbg = ss_macro_get_integer(C, "USE_DEBUG_BG");
@@ -238,6 +240,14 @@ static void main_loop(ss_core_context* C)
 	RECT rect;
 	GetClientRect(hwnd, &rect);
 	device->set_viewport(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+
+    static int tagOnSize = 0;
+    ss_cache_script_from_macro(L, "SCRIPTS(onSizeChanged)", &tagOnSize);
+    lua_pushinteger(L, rect.right - rect.left);
+    lua_pushinteger(L, rect.bottom - rect.top);
+    ss_lua_safe_call(L, 2, 0);
+
+    ss_run_script_from_macro(C, "SCRIPTS(onStart)");
 
 	for (;;)
 	{
@@ -252,13 +262,11 @@ static void main_loop(ss_core_context* C)
 		}
 		else {
 			//TODO: if paused, ignore enterframe and use GetMessage for less cpu usage.
-			//seed_app_enterFrame(tick_count());
 			if (debugbg){
 				device->clear_color(1.f, 0.3f, 0.5f, 0.f);
 				device->clear();
 			}
 
-			lua_State *L = ss_get_script_context(C);
 			static int tagOnFrame = 0;
 			ss_cache_script_from_macro(L, "SCRIPTS(onFrame)", &tagOnFrame);
             lua_pushnumber(L, t->get_dt());
@@ -270,6 +278,7 @@ static void main_loop(ss_core_context* C)
 	}
 
     delete t;
+    ss_run_script_from_macro(C, "SCRIPTS(onStop)");
 }
 
 
@@ -310,9 +319,7 @@ int WINAPI WinMain(_In_  HINSTANCE hInstance,
 
 	if (create_window(C)){
 		if (create_render_device(C)){
-            ss_run_script_from_macro(C, "SCRIPTS(onStart)");
-			main_loop(C);
-            ss_run_script_from_macro(C, "SCRIPTS(onStop)");
+            main_loop(C);
 			destroy_render_device(C);
 		}
 
