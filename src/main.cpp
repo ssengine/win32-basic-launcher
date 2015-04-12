@@ -6,6 +6,7 @@
 
 #include <ssengine/macros.h>
 #include "launcher.h"
+#include "clock.h"
 
 #include <ssengine/uri.h>
 #include <ssengine/render/resources.h>
@@ -37,11 +38,133 @@ static ss_logger logger = {
 };
 
 static HWND hwnd;
+static clock* s_clock;
+static int captureCount = 0;
+
+inline bool ResetCaptureCount(){
+    bool ret = captureCount != 0;
+    captureCount = 0;
+    return ret;
+}
+
+inline void AddCaptureCount(HWND hwnd){
+    if (captureCount++ == 0){
+        SetCapture(hwnd);
+    }
+}
+inline void DecCaptureCount(){
+    if (--captureCount == 0){
+        ReleaseCapture();
+    }
+}
 
 static void WINAPI wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    ss_core_context* C;
+    if (msg == WM_CREATE){
+        LPCREATESTRUCT cs = reinterpret_cast<LPCREATESTRUCT>(lparam);
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)cs->lpCreateParams);
+        C = (ss_core_context*)(cs->lpCreateParams);
+    }
+    else {
+        C = (ss_core_context*)(::GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
 	switch (msg)
 	{
+    case WM_KEYDOWN:
+    {
+        int keyCode = wparam & 0xff;
+    }
+    break;
+    case WM_KEYUP:
+    {
+        int keyCode = wparam & 0xff;
+    }
+    break;
+    case WM_SYSCOMMAND:
+    {
+        if (wparam == SC_MINIMIZE)
+        {
+        }
+        else if (wparam == SC_RESTORE){
+        }
+        DefWindowProcW(hwnd, msg, wparam, lparam);
+    }
+    break;
+    case WM_MOUSEMOVE:
+    {
+        lua_State* L = ss_get_script_context(C);
+        static int tagEvent = 0;
+        ss_cache_script_from_macro(L, "SCRIPTS(onMouseMove)", &tagEvent);
+        lua_pushinteger(L, (short)LOWORD(lparam));
+        lua_pushinteger(L, (short)HIWORD(lparam));
+        lua_pushnumber(L, s_clock->get_dt(true));
+        ss_lua_safe_call(L, 3, 0);
+    }
+    break;
+    case WM_CAPTURECHANGED:
+    {
+        if (ResetCaptureCount()){
+            lua_State* L = ss_get_script_context(C);
+            static int tagEvent = 0;
+            ss_cache_script_from_macro(L, "SCRIPTS(onLostFocus)", &tagEvent);
+            lua_pushnumber(L, s_clock->get_dt(true));
+            ss_lua_safe_call(L, 1, 0);
+        }
+    }
+    break;
+    case WM_LBUTTONDOWN:
+    {
+        AddCaptureCount(hwnd);
+        lua_State* L = ss_get_script_context(C);
+        static int tagEvent = 0;
+        ss_cache_script_from_macro(L, "SCRIPTS(onMouseDown)", &tagEvent);
+        lua_pushinteger(L, 1);
+        lua_pushinteger(L, (short)LOWORD(lparam));
+        lua_pushinteger(L, (short)HIWORD(lparam));
+        lua_pushnumber(L, s_clock->get_dt(true));
+        ss_lua_safe_call(L, 4, 0);
+    }
+    break; 
+    case WM_LBUTTONUP:
+    {
+        DecCaptureCount();
+        lua_State* L = ss_get_script_context(C);
+        static int tagEvent = 0;
+        ss_cache_script_from_macro(L, "SCRIPTS(onMouseUp)", &tagEvent);
+        lua_pushinteger(L, 1);
+        lua_pushinteger(L, (short)LOWORD(lparam));
+        lua_pushinteger(L, (short)HIWORD(lparam));
+        lua_pushnumber(L, s_clock->get_dt(true));
+        ss_lua_safe_call(L, 4, 0);
+    }
+    break;
+    case WM_RBUTTONDOWN:
+    {
+        AddCaptureCount(hwnd);
+        lua_State* L = ss_get_script_context(C);
+        static int tagEvent = 0;
+        ss_cache_script_from_macro(L, "SCRIPTS(onMouseDown)", &tagEvent);
+        lua_pushinteger(L, 2);
+        lua_pushinteger(L, (short)LOWORD(lparam));
+        lua_pushinteger(L, (short)HIWORD(lparam));
+        lua_pushnumber(L, s_clock->get_dt(true));
+        ss_lua_safe_call(L, 4, 0);
+    }
+    break;
+    case WM_RBUTTONUP:
+    {
+        DecCaptureCount();
+        lua_State* L = ss_get_script_context(C);
+        static int tagEvent = 0;
+        ss_cache_script_from_macro(L, "SCRIPTS(onMouseUp)", &tagEvent);
+        lua_pushinteger(L, 2);
+        lua_pushinteger(L, (short)LOWORD(lparam));
+        lua_pushinteger(L, (short)HIWORD(lparam));
+        lua_pushnumber(L, s_clock->get_dt(true));
+        ss_lua_safe_call(L, 4, 0);
+    }
+    break;
 	case WM_CLOSE:
 		//TODO: Send global event.
 		PostQuitMessage(0);
@@ -94,7 +217,7 @@ static BOOL create_window(ss_core_context* C)
 
 		hwnd = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE,
 			class_name, wsTitle,
-            (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) &(~WS_SIZEBOX) &(~WS_MAXIMIZEBOX), 0, 0, uiWidth, uiHeight, NULL, NULL, hInstance, NULL);
+            (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) &(~WS_SIZEBOX) &(~WS_MAXIMIZEBOX), 0, 0, uiWidth, uiHeight, NULL, NULL, hInstance, C);
 
 		free(wsTitle);
 		ShowWindow(hwnd, SW_SHOW);
@@ -169,65 +292,12 @@ static void destroy_render_device(ss_core_context* C){
 	device = NULL;
 }
 
-struct clock{
-public:
-    virtual ~clock(){};
-    virtual double get_dt() = 0;
-    virtual bool is_valid() = 0;
-};
-
-struct hr_clock : clock{
-    hr_clock(){
-        LARGE_INTEGER freq;
-        valid = QueryPerformanceFrequency(&freq) && QueryPerformanceCounter(&stamp);
-        frequency = (double)freq.QuadPart;
-    }
-    virtual ~hr_clock(){
-
-    }
-    virtual double get_dt(){
-        LARGE_INTEGER newT;
-        QueryPerformanceCounter(&newT);
-
-        double ret = (newT.QuadPart - stamp.QuadPart) / frequency;
-        stamp = newT;
-        return ret;
-    }
-    virtual bool is_valid(){
-        return valid;
-    }
-private:
-    bool valid;
-    double frequency;
-    LARGE_INTEGER stamp;
-};
-
-struct lr_clock : clock{
-    lr_clock(){
-        stamp = GetTickCount();
-    }
-    virtual ~lr_clock(){
-
-    }
-    virtual double get_dt(){
-        DWORD newT = GetTickCount();
-        double ret = (newT - stamp) / 1000.0;
-        stamp = newT;
-        return ret;
-    }
-    virtual bool is_valid(){
-        return true;
-    }
-    DWORD stamp;
-};
-
-
 static void main_loop(ss_core_context* C)
 {
-    clock* t = new hr_clock();
-    if (!t->is_valid()){
-        delete t;
-        t = new lr_clock();
+    s_clock = new hr_clock();
+    if (!s_clock->is_valid()){
+        delete s_clock;
+        s_clock = new lr_clock();
     }
     lua_State *L = ss_get_script_context(C);
 
@@ -269,7 +339,7 @@ static void main_loop(ss_core_context* C)
 
 			static int tagOnFrame = 0;
 			ss_cache_script_from_macro(L, "SCRIPTS(onFrame)", &tagOnFrame);
-            lua_pushnumber(L, t->get_dt());
+            lua_pushnumber(L, s_clock->get_dt());
 			ss_lua_safe_call(L, 1, 0);
 
 			ss_db_flush(C);
@@ -277,7 +347,7 @@ static void main_loop(ss_core_context* C)
 		}
 	}
 
-    delete t;
+    delete s_clock;
     ss_run_script_from_macro(C, "SCRIPTS(onStop)");
 }
 

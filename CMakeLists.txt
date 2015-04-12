@@ -9,6 +9,7 @@ SET(LOCAL_SOURCES_FILES
 	src/project.cpp
 	src/launcher.h
 	src/defines.c
+	src/clock.h
 	
 	res/resource.h
 	res/resource.rc
