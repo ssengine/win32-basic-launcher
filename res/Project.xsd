@@ -9,7 +9,15 @@
     <xs:complexType>
       <xs:sequence>
         <xs:element name="Name" type="xs:string"/>
-        <xs:element name="UriAliases">
+        <xs:element name="Plugins" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Plugin" maxOccurs="unbounded" minOccurs="0">
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+        <xs:element name="UriAliases" minOccurs="0">
           <xs:complexType>
             <xs:sequence>
               <xs:element name="Alias" maxOccurs="unbounded" minOccurs="0">
@@ -75,6 +83,20 @@
           <xs:attribute name="name" type="xs:string" />
         </xs:extension>
       </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+  
+  <xs:element name="plugin">
+    <xs:complexType>
+      <xs:attribute name="type">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="native"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="path" type="xs:string" use="optional"/>
     </xs:complexType>
   </xs:element>
   

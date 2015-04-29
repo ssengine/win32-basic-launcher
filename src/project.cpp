@@ -78,7 +78,9 @@ void load_xml_text(ss_core_context* C, IXMLDOMNode* root,
 	ASSUME_SUCCESS(root->selectSingleNode(
 		CComBSTR(path),
 		&node));
-	load_xml_text(C, node, name);
+    if (node != nullptr){
+        load_xml_text(C, node, name);
+    }
 }
 
 std::string get_xml_text(IXMLDOMNode* root){
@@ -143,6 +145,15 @@ void enum_xml_node(
 	}
 }
 
+static void plugin_enum_callback(ss_core_context* C, int id, const std::string& name, IXMLDOMNode* node){
+    std::string macroName = name;
+    macroName.insert(0, "PLUGINS(");
+    macroName.append(")");
+
+    load_xml_text(C, node, (macroName + "(type)").c_str(), L"@type");
+    load_xml_text(C, node, (macroName + "(path)").c_str(), L"@path");
+}
+
 static void emulator_enum_callback(ss_core_context* C, int id, const std::string& name, IXMLDOMNode* node)
 {
 	if (id == 0 && !ss_macro_isdef(C, "EMULATOR")){
@@ -194,6 +205,7 @@ static void load_configure_fom_project(ss_core_context* C, IXMLDOMDocument2* pXM
 
 	load_xml_text(C, pXMLDoc, "PROJECT_NAME", L"/s:Project/s:Name");
 
+    enum_xml_node(C, pXMLDoc, CComBSTR(L"/s:Project/s:Plugins/s:Plugin"), CComBSTR(L"@name"), plugin_enum_callback);
 	enum_xml_node(C, pXMLDoc, CComBSTR(L"/s:Project/s:Emulators/s:Emulator"), CComBSTR(L"@name"), emulator_enum_callback);
 	enum_xml_node(C, pXMLDoc, CComBSTR(L"/s:Project/s:UriAliases/s:Alias"), CComBSTR(L"@schema"), alias_enum_callback);
 	enum_xml_node(C, pXMLDoc, CComBSTR(L"/s:Project/s:Scripts/s:Script"), CComBSTR(L"@name"), script_enum_callback);
